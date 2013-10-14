@@ -1,0 +1,55 @@
+$def with (header,footer)
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>HA Server</title>
+<link rel="stylesheet" href="static/jquery-ui-1.10.3.custom.css" />
+<link rel="stylesheet" href="static/jquery.data.tables.css" />
+<link rel="stylesheet" href="static/main.css" />
+<script src="static/jquery-2.0.3.min.js"></script>
+<script src="static/jquery.form.min.js"></script>
+<script src="static/jquery-ui-1.10.3.custom.min.js"></script>
+<script src="static/jquery.data.tables.min.js"></script>
+<script>
+	$$(document).ready(function() {
+		var oTable = $$('#devices').dataTable( {
+			"bProcessing": true,
+			"sAjaxSource": 'rest/devices',
+			"sAjaxDataProp": 'devices',
+			"iDisplayLength": 100,
+			"aoColumnDefs": [ 
+				{
+					"fnRender": function ( oObj ) {
+						return '0x'+oObj.aData[1].toString(16).toUpperCase();
+					},
+					"aTargets": [ 1 ]
+				}
+			]
+		} );
+	} );
+</script>
+</head>
+<body id="index" class="home">
+$:header
+
+<aside id="featured" class="body"><article>
+	<figure>
+		<img src="static/images/raspberry-pi-logo.jpg" alt="HA Server" />
+	</figure>
+	<hgroup>
+		<h2>Devices</h2>
+	</hgroup>
+	<table cellpadding="0" cellspacing="0" border="0" class="display" id="devices">
+	<thead>
+		<tr>
+		<th width="90%">Device Name</th>
+		<th width="10%">Address</th>
+		</tr>
+	</thead>
+	<tbody></tbody>
+	</table>
+</article></aside><!-- /#featured -->
+$:footer
+</body>
+</html>

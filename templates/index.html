@@ -1,12 +1,65 @@
-<!DOCTYPE HTML>
-<html>
-<body>
+$def with (header,footer)
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>HA Server</title>
+<link rel="stylesheet" href="static/jquery-ui-1.10.3.custom.css" />
+<link rel="stylesheet" href="static/main.css" />
+<script src="static/jquery-2.0.3.min.js"></script>
+<script src="static/jquery.form.min.js"></script>
+<script src="static/jquery-ui-1.10.3.custom.min.js"></script>
+</head>
+<body id="index" class="home">
+$:header
+<aside id="featured" class="body"><article>
+	<figure>
+		<img src="static/images/raspberry-pi-logo.jpg" alt="Smashing Magazine" />
+	</figure>
+	<hgroup>
+ 
+		<h2>Home</h2>
+	</hgroup>
+	<p>Discover how to use Graceful Degradation and Progressive Enhancement techniques to achieve an outstanding, cross-browser <a href="http://dev.w3.org/html5/spec/Overview.html" rel="external">HTML5</a> and <a href="http://www.w3.org/TR/css3-roadmap/" rel="external">CSS3</a> website today!</p>
+ 
+</article></aside><!-- /#featured -->
 
-<video width="320" height="240" controls>
-  <source src="movie.mp4" type="video/mp4">
-  <source src="movie.ogg" type="video/ogg">
-  Your browser does not support the video tag.
-</video>
+<section id="content" class="body">
+	<ol id="posts-list" class="hfeed">
+		<li><article class="hentry">	
+			<header>
+				<h2 class="entry-title"><a href="#" rel="bookmark" title="Permalink to this POST TITLE">This be the title</a></h2>
+ 
+			</header>
+ 
+			<footer class="post-info">
+				<abbr class="published" title="2005-10-10T14:07:00-07:00"><!-- YYYYMMDDThh:mm:ss+ZZZZ -->
+					10th October 2005
+				</abbr>
+ 
+				<address class="vcard author">
+ 
+					By <a class="url fn" href="#">Enrique Ramirez</a>
+				</address>
+			</footer><!-- /.post-info -->
+ 
+			<div class="entry-content">
+ 
+				<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque venenatis nunc vitae libero iaculis elementum. Nullam et justo <a href="#">non sapien</a> dapibus blandit nec et leo. Ut ut malesuada tellus.</p>
+			</div><!-- /.entry-content -->
+		</article></li>
+ 
+		<li><article class="hentry">
+			...
+		</article></li>
+ 
+		<li><article class="hentry">
+			...
+		</article></li>
+ 
+	</ol><!-- /#posts-list -->
+</section><!-- /#content --> 
 
+$:footer
 </body>
 </html>

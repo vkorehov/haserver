@@ -78,7 +78,7 @@ def _flash_download(i2c_addr, addr):
                         retries_count += 1
                         continue;
 
-def device_firmware_erase(i2c_addr, size, log):
+def firmware_erase(i2c_addr, size, log):
 	global total_retries_count
 	total_retries_count = 0
 	# Reset address pointer in the device
@@ -89,11 +89,11 @@ def device_firmware_erase(i2c_addr, size, log):
 			# skip non-implemented memory & config bits
 			aw += flash_erase_block
 			continue
-		print >>log 'Erasing address:' + hex(aw) + ' to ' + hex(aw+flash_erase_block)
+		print >>log, 'Erasing address:' + hex(aw) + ' to ' + hex(aw+flash_erase_block)
 		_flash_erase(i2c_addr, aw)
 		aw += 32
 
-def device_firmware_upload(i2c_addr, filename, size, log):
+def firmware_upload(i2c_addr, filename, size, log):
         global total_retries_count
 	ih = IntelHex()
 	ih.loadhex(filename)
@@ -117,7 +117,7 @@ def device_firmware_upload(i2c_addr, filename, size, log):
                         raise IOError('hex file is too large to fit into memory range')
 
 		if aw < 0x80000: # skip programming of config space
-			print >>log "programming block @:"+hex(aw) + " data:"+(':'.join("%02x" % c for c in d))
+			print >>log, "programming block @:"+hex(aw) + " data:"+(':'.join("%02x" % c for c in d))
 			_flash_upload(i2c_addr, aw, [c for c in d])		
 		aw += flash_write_block
 
@@ -137,7 +137,7 @@ def device_firmware_upload(i2c_addr, filename, size, log):
 			# skip verification of config space
 			continue
 
-                print >>log "verifying block (expected) @:"+hex(aw) + " data:"+(':'.join("%02x" % c for c in d)),
+                print >>log, "verifying block (expected) @:"+hex(aw) + " data:"+(':'.join("%02x" % c for c in d)),
 		dd = _flash_download(i2c_addr, aw)
 		#print "verifying block (actual  ) @:"+hex(aw) + " data:"+(':'.join("%02x" % c for c in dd))
                 aw += flash_write_block		
@@ -146,20 +146,20 @@ def device_firmware_upload(i2c_addr, filename, size, log):
 				fa = aw-flash_write_block + av/2				
 				raise IOError("device flash data is different from expected @"+hex(aw-flash_write_block)+\
 							", it is:"+hex(dd[av-a])+","+hex(dd[av-a+1])+" while should be:"+hex(d[av-a])+","+hex(d[av-a+1]))
-		print >>log "OK"
+		print >>log, "OK"
 	return total_retries_count
 
-def device_launch(i2c_addr):
+def launch(i2c_addr):
 	bus.read_word_data(i2c_addr, 0x06)
 
-def device_probe(i2c_addr):
+def probe(i2c_addr):
 	try:
 		bus.read_word_data(i2c_addr, 0x01)
 		return 1
 	except IOError,err:
 		return 0
 
-def device_discover(i2c_addr):
+def discover(i2c_addr):
 	timeout = 500 # 500 seconds timeout for device discovery, you need to poweroff/poweron device during this timeframe
         while True:
                 try:
@@ -169,10 +169,10 @@ def device_discover(i2c_addr):
                         if bus.read_word_data(i2c_addr, 0x01) == 0x200:
                                 return i2c_addr
                         time.sleep(1.0)
-			timeout--
+			timeout -= 1
                 except IOError,err:
 			time.sleep(1.0)
-			timeout--
+			timeout -= 1
                         continue
 
 #firmware_erase(0x8200*2)

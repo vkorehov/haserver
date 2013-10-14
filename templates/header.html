@@ -1,0 +1,15 @@
+$def with (highlight)
+$def linkactive(idx):
+	$if highlight == idx:
+		class=active
+
+<header id="banner" class="body">
+	<h1><a href="#">HA Server<strong>Version <ins>1.0.0</ins></strong></a></h1> 
+	<nav><ul>
+		<li $linkactive(1) ><a href="index.html">home</a></li>
+		<li $linkactive(2) ><a href="devices.html">devices</a></li> 
+		<li $linkactive(3) ><a href="http://vkorehovisback.livejournal.com">blog</a></li>
+		<li $linkactive(4) ><a href="#">contact</a></li>
+	</ul></nav>
+ 
+</header><!-- /#banner -->	
