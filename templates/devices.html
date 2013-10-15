@@ -4,28 +4,132 @@ $def with (header,footer)
 <head>
 <meta charset="utf-8" />
 <title>HA Server</title>
+<link rel="stylesheet" href="static/main.css" />
 <link rel="stylesheet" href="static/jquery-ui-1.10.3.custom.css" />
 <link rel="stylesheet" href="static/jquery.data.tables.css" />
-<link rel="stylesheet" href="static/main.css" />
 <script src="static/jquery-2.0.3.min.js"></script>
+<script src="static/jquery.validate.min.js"></script>
 <script src="static/jquery.form.min.js"></script>
 <script src="static/jquery-ui-1.10.3.custom.min.js"></script>
-<script src="static/jquery.data.tables.min.js"></script>
+<script src="static/jquery.data.tables.js"></script>
 <script>
+	$$.fn.preload = function() {
+    		this.each(function(){
+        		$$('<img/>')[0].src = this;
+    		});
+	}
+	function progressHandlingFunction(e){
+		if(e.lengthComputable){
+			$$('#progressbar').progressbar({
+      				value: e.loaded, max:e.total
+    			});
+		}
+	}
+	function clearUpload() {
+		$$('#firmware-form .error').removeClass('error');
+		$$('#firmware-form label.error').hide();
+		$$('#upload-message').html('');
+	}
+
 	$$(document).ready(function() {
+		$$([	'static/images/ajax-loader.gif',
+			'static/images/bl-active-icon.png',
+			'static/images/bl-inactive-icon.png']).preload();
+		$$('#progressbar').progressbar({
+      			value: 0
+    		});
+		$$('#firmware-form').validate();
+		$$('#firmware').change(function(){
+			//clearUpload();
+		});
+
 		var oTable = $$('#devices').dataTable( {
 			"bProcessing": true,
 			"sAjaxSource": 'rest/devices',
 			"sAjaxDataProp": 'devices',
 			"iDisplayLength": 100,
-			"aoColumnDefs": [ 
+			"aoColumnDefs": [
 				{
 					"fnRender": function ( oObj ) {
 						return '0x'+oObj.aData[1].toString(16).toUpperCase();
 					},
 					"aTargets": [ 1 ]
+				},
+				{
+					"fnRender": function ( oObj ) {
+						return '<span class=\'action\'><span style="display:none">'+oObj.aData[1]+'</span><img class="icon" height="32" width="32" src="static/images/ajax-loader.gif" /></span>';
+					},
+					"mData": null,
+					"aTargets": [ 2 ]
 				}
-			]
+			],
+			"fnInitComplete": function(oSettings, json) {
+				$$(".action").each(function() {
+					// Get device status
+					$$.ajax({
+						url: 'rest/device?addr='+parseInt($$(this).text(), 16),
+  						context: $$(this)
+					}).done(function(response) {
+						var addr = $$(this).text();
+						var data = JSON.parse(response);
+						if(data.status) {
+							$$(this).html('<a href="#"><img class="icon bootloader-active'+addr+'" height="32" width="32" src="static/images/bl-active-icon.png" /></a>');
+						} else {
+							$$(this).html('<a href="#"><img class="icon bootloader-inactive'+addr+'" height="32" width="32" src="static/images/bl-inactive-icon.png" /></a>');
+						}
+						$$('.bootloader-active'+addr).click(function() {
+							$$('.upload-addr').val(parseInt(addr, 16));
+							$$('#firmware').val('');
+							clearUpload();
+							$$('#firmware-upload').dialog({
+								width:'600px',
+								modal: true,
+								buttons: {
+									Upload: function() {
+										var dialog = $$(this);
+										var form = $$("#firmware-form");
+										if($$("#firmware-form").valid()) {
+											var formData = new FormData(form[0]);
+											$$.ajax( {
+												type: "POST",
+												url: form.attr( 'action' ),
+												data: formData,
+												xhr: function() {  // Custom XMLHttpRequest
+            												var myXhr = $$.ajaxSettings.xhr();
+            												if(myXhr.upload){ // Check if upload property exists
+                												myXhr.upload.addEventListener('progress',progressHandlingFunction, false); // For handling the progress of the upload
+            												}
+            												return myXhr;
+        											},
+												success: function( response ) {
+													$$('#progressbar').progressbar({
+      														value:1, max:1
+    													});
+													dialog.dialog( "close" );
+												},
+												error: function( response ) {
+													$$('#progressbar').progressbar({
+      														value:0
+    													});
+													$$('#upload-message').html(response.statusText).addClass('error');
+												},
+											       //Options to tell jQuery not to process data or worry about content-type.
+											       cache: false,
+        											contentType: false,
+       											processData: false
+											});
+										}
+									}
+								}
+							});							
+						});
+						$$('.bootloader-inactive'+addr).click(function() {
+							window.alert('Inactive');
+						});
+						$$(this).show();
+					});
+				});
+    			}
 		} );
 	} );
 </script>
@@ -43,13 +147,28 @@ $:header
 	<table cellpadding="0" cellspacing="0" border="0" class="display" id="devices">
 	<thead>
 		<tr>
-		<th width="90%">Device Name</th>
+		<th width="80%">Device Name</th>
 		<th width="10%">Address</th>
+		<th width="10%">Actions</th>
 		</tr>
 	</thead>
 	<tbody></tbody>
 	</table>
 </article></aside><!-- /#featured -->
 $:footer
+<div style="display:none" id="firmware-upload" title="Firmware Upload">
+  <p>
+    <span class="ui-icon ui-icon-circle-check" style="float: left; margin: 0 7px 50px 0;"></span>
+	Please select a firmware in .hex format to upload to device
+  </p>
+  <form id="firmware-form" method="POST" action="rest/device" enctype="multipart/form-data">
+	<input type="hidden" class="upload-addr" name="addr" value="" />
+	<input type="file" name="firmware" id="firmware" required />
+  </form>
+  <div style="left: 0px; right:0px;text-align:center; margin-top:5px;" id="upload-message"></div>
+  <p>
+  <div id="progressbar"></div>
+  </p>
+</div>
 </body>
 </html>

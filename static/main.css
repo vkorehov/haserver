@@ -117,9 +117,7 @@ label {font-size: 1.1em; height: 25px; line-height: 25px;}
                 padding: .3em 2em;
                 text-shadow: 1px 1px 1px #000;
         }
-        
-        input:required, textarea:required {outline: 1px solid #C74350;}
-        
+                
         /* Textarea */
         textarea {width: 99%; margin-bottom: 7px;}
 
@@ -545,9 +543,10 @@ li:last-child .hentry, #content > .hentry {border: 0; margin: 0;}
 	#add-comment input[type='submit'] {float: right; margin: 0 .5em;}
 	#add-comment * {margin-bottom: .5em;}
 
+.icon {
+	vertical-align: middle;
+}
 
-
-
-
-
-
+.error {
+	color: red;
+}
