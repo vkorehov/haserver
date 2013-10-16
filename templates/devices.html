@@ -12,6 +12,7 @@ $def with (header,footer)
 <script src="static/jquery.form.min.js"></script>
 <script src="static/jquery-ui-1.10.3.custom.min.js"></script>
 <script src="static/jquery.data.tables.js"></script>
+<script src="static/jquery.sparkline.js"></script>
 <script>
 	$$.fn.preload = function() {
     		this.each(function(){
@@ -25,10 +26,20 @@ $def with (header,footer)
     			});
 		}
 	}
+	function disableUpload() {
+		$$('.ui-dialog-buttonset button', $$('#firmware-dialog').parent()).attr('disabled', 'true');
+		$$('#firmware-form :input').attr("disabled", "true");
+	}
+	function enableUpload() {
+		$$('#firmware-form :input').removeAttr("disabled");
+		$$('.ui-dialog-buttonset button', $$('#firmware-dialog').parent()).removeAttr("disabled");
+	}
 	function clearUpload() {
-		$$('#firmware-form .error').removeClass('error');
+		// Just clear errors without resetting form!
 		$$('#firmware-form label.error').hide();
-		$$('#upload-message').html('');
+		$$('#firmware-form .error').removeClass('error');
+		$$('#upload-msg').html('');
+		enableUpload();
 	}
 
 	$$(document).ready(function() {
@@ -40,8 +51,62 @@ $def with (header,footer)
     		});
 		$$('#firmware-form').validate();
 		$$('#firmware').change(function(){
-			//clearUpload();
+			clearUpload();
 		});
+
+		var rangeMap5V = $$.range_map({
+        		0: 'red',
+        		'1:5': 'yellow',
+        		5: 'green'
+    		});
+		var myvalues = [1,2,1,3,1,5,1,5,1,-1,-1,1,0,1,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,0,1,0,1];
+		$$.ajax({
+			url: 'rest/bus/history?bus=1',
+			success: function(response) {
+				var data = JSON.parse(response);
+				if(data.history && data.history.length) {
+					$$('.bus-history5V').sparkline(myvalues, { type:'tristate' });
+				} else {
+					$$('.bus-history5V').html('<span style="position:relative;top:-6px;">no data</span>');
+				}
+			},
+			error: function() {
+                		//try again
+                		$$.ajax(this);
+			}
+		});
+		$$.ajax({
+			url: 'rest/bus/history?bus=2',
+			success: function(response) {
+				var data = JSON.parse(response);
+				if(data.history && data.history.length) {
+					$$('.bus-history12V').sparkline(myvalues, { type:'tristate' });
+				} else {
+					$$('.bus-history12V').html('<span style="position:relative;top:-6px;">no data</span>');
+				}
+			},
+			error: function() {
+                		//try again
+                		$$.ajax(this);
+			}
+		});
+		$$.ajax({
+			url: 'rest/bus/history?bus=3',
+			success: function(response) {
+				var data = JSON.parse(response);
+				if(data.history && data.history.length) {
+					$$('.bus-history220V').sparkline(myvalues, { type:'tristate' });
+				} else {
+					$$('.bus-history220V').html('<span style="position:relative;top:-6px;">no data</span>');
+				}
+			},
+			error: function() {
+                		//try again
+                		$$.ajax(this);
+			}
+		});
+		
+
 
 		var oTable = $$('#devices').dataTable( {
 			"bProcessing": true,
@@ -51,82 +116,114 @@ $def with (header,footer)
 			"aoColumnDefs": [
 				{
 					"fnRender": function ( oObj ) {
-						return '0x'+oObj.aData[1].toString(16).toUpperCase();
+						if (oObj.aData[1] == 1)
+							return '5V';
+						if (oObj.aData[1] == 2)
+							return '12V';
+						if (oObj.aData[1] == 4)
+							return '220V';
+						if (oObj.aData[1] == 1+2)
+							return '5V/12V';
+						if (oObj.aData[1] == 1+4)
+							return '5V/220V';
+						if (oObj.aData[1] == 1+2+4)
+							return '5V/12V/220V';
+						return 'Unknow';
 					},
 					"aTargets": [ 1 ]
 				},
 				{
 					"fnRender": function ( oObj ) {
-						return '<span class=\'action\'><span style="display:none">'+oObj.aData[1]+'</span><img class="icon" height="32" width="32" src="static/images/ajax-loader.gif" /></span>';
+						return '0x'+oObj.aData[3].toString(16).toUpperCase();
+					},
+					"aTargets": [ 3 ]
+				},
+				{
+					"fnRender": function ( oObj ) {
+						return '<span class=\'action\'><span style="display:none">'+oObj.aData[3]+'</span><img class="icon" height="32" width="32" src="static/images/ajax-loader.gif" /></span>';
 					},
 					"mData": null,
-					"aTargets": [ 2 ]
+					"aTargets": [ 4 ]
 				}
 			],
 			"fnInitComplete": function(oSettings, json) {
 				$$(".action").each(function() {
 					// Get device status
+					var action = $$(this)
 					$$.ajax({
 						url: 'rest/device?addr='+parseInt($$(this).text(), 16),
-  						context: $$(this)
-					}).done(function(response) {
-						var addr = $$(this).text();
-						var data = JSON.parse(response);
-						if(data.status) {
-							$$(this).html('<a href="#"><img class="icon bootloader-active'+addr+'" height="32" width="32" src="static/images/bl-active-icon.png" /></a>');
-						} else {
-							$$(this).html('<a href="#"><img class="icon bootloader-inactive'+addr+'" height="32" width="32" src="static/images/bl-inactive-icon.png" /></a>');
-						}
-						$$('.bootloader-active'+addr).click(function() {
-							$$('.upload-addr').val(parseInt(addr, 16));
-							$$('#firmware').val('');
-							clearUpload();
-							$$('#firmware-upload').dialog({
-								width:'600px',
-								modal: true,
-								buttons: {
-									Upload: function() {
-										var dialog = $$(this);
-										var form = $$("#firmware-form");
-										if($$("#firmware-form").valid()) {
-											var formData = new FormData(form[0]);
-											$$.ajax( {
-												type: "POST",
-												url: form.attr( 'action' ),
-												data: formData,
-												xhr: function() {  // Custom XMLHttpRequest
-            												var myXhr = $$.ajaxSettings.xhr();
-            												if(myXhr.upload){ // Check if upload property exists
-                												myXhr.upload.addEventListener('progress',progressHandlingFunction, false); // For handling the progress of the upload
-            												}
-            												return myXhr;
-        											},
-												success: function( response ) {
-													$$('#progressbar').progressbar({
-      														value:1, max:1
-    													});
-													dialog.dialog( "close" );
-												},
-												error: function( response ) {
-													$$('#progressbar').progressbar({
-      														value:0
-    													});
-													$$('#upload-message').html(response.statusText).addClass('error');
-												},
-											       //Options to tell jQuery not to process data or worry about content-type.
-											       cache: false,
-        											contentType: false,
-       											processData: false
-											});
+						success: function(response) {
+							var addr = action.text();
+							var data = JSON.parse(response);
+							if(data.status) {
+								action.html('<a href="#"><img class="icon bootloader-active'+addr+'" height="32" width="32" src="static/images/bl-active-icon.png" /></a>');
+							} else {
+								action.html('<a href="#"><img class="icon bootloader-inactive'+addr+'" height="32" width="32" src="static/images/bl-inactive-icon.png" /></a>');
+							}
+							$$('.bootloader-active'+addr).click(function() {
+								var uploadAjax;
+								$$('#firmware-form').validate().resetForm();
+								clearUpload();
+								$$('#firmware-form .upload-addr').val(parseInt(addr, 16));
+								$$('#firmware').val('');
+								$$('#firmware-dialog').dialog({
+									width:'600px',
+									modal: true,
+									buttons: {
+										Upload: function() {
+											var dialog = $$(this);
+											var form = $$("#firmware-form");
+											if($$("#firmware-form").valid()) {
+												var formData = new FormData(form[0]);
+												disableUpload();
+												uploadAjax = $$.ajax({
+													type: "POST",
+													url: form.attr( 'action' ),
+													data: formData,
+													xhr: function() {  // Custom XMLHttpRequest
+            													var myXhr = $$.ajaxSettings.xhr();
+            													if(myXhr.upload){ // Check if upload property exists
+                													myXhr.upload.addEventListener('progress',progressHandlingFunction, false); // For handling the progress of the upload
+            													}
+            													return myXhr;
+        												},
+													success: function( response ) {
+														$$('#progressbar').progressbar({
+      															value:1, max:1
+    														});
+														dialog.dialog( "close" );
+													},
+													error: function( response ) {
+														$$('#progressbar').progressbar({
+      															value:0
+    														});
+														$$('#upload-msg').html(response.statusText).addClass('error');
+														enableUpload();
+													},
+												       //Options to tell jQuery not to process data or worry about content-type.
+												       cache: false,
+        												contentType: false,
+       												processData: false
+												});
+											}
+										}
+									},
+									close: function() {
+										if (uploadAjax != undefined){
+											uploadAjax.abort();
 										}
 									}
-								}
-							});							
-						});
-						$$('.bootloader-inactive'+addr).click(function() {
-							window.alert('Inactive');
-						});
-						$$(this).show();
+								});
+							});
+							$$('.bootloader-inactive'+addr).click(function() {
+								window.alert('Inactive');
+							});
+							action.show();
+						},
+						error: function() {
+                					//try again
+                					$$.ajax(this);
+						}
 					});
 				});
     			}
@@ -142,21 +239,26 @@ $:header
 		<img src="static/images/raspberry-pi-logo.jpg" alt="HA Server" />
 	</figure>
 	<hgroup>
-		<h2>Devices</h2>
+		<h2>Rails</h2>
+		<div style="position:relative;"><span>5V</span><span style="position:absolute;left:40px;top:5px;" class="bus-history5V"><img style="position:relative;top:-5px;" height="16" width="16" src="static/images/ajax-loader16.gif" /></span></div>
+		<div style="position:relative;"><span>12V</span><span style="position:absolute;left:40px;top:5px;" class="bus-history12V"><img style="position:relative;top:-5px;" height="16" width="16" src="static/images/ajax-loader16.gif" /></span></div>
+		<div style="position:relative;"><span>220V</span><span style="position:absolute;left:40px;top:5px;" class="bus-history220V"><img style="position:relative;top:-5px;" height="16" width="16" src="static/images/ajax-loader16.gif" /></span></div>
 	</hgroup>
 	<table cellpadding="0" cellspacing="0" border="0" class="display" id="devices">
 	<thead>
 		<tr>
-		<th width="80%">Device Name</th>
+		<th width="5%">ID</th>
+		<th width="10%">Rail</th>
+		<th width="60%">Device Name</th>
 		<th width="10%">Address</th>
-		<th width="10%">Actions</th>
+		<th width="15%">Actions</th>
 		</tr>
 	</thead>
 	<tbody></tbody>
 	</table>
 </article></aside><!-- /#featured -->
 $:footer
-<div style="display:none" id="firmware-upload" title="Firmware Upload">
+<div style="display:none" id="firmware-dialog" title="Firmware Upload">
   <p>
     <span class="ui-icon ui-icon-circle-check" style="float: left; margin: 0 7px 50px 0;"></span>
 	Please select a firmware in .hex format to upload to device
@@ -165,7 +267,7 @@ $:footer
 	<input type="hidden" class="upload-addr" name="addr" value="" />
 	<input type="file" name="firmware" id="firmware" required />
   </form>
-  <div style="left: 0px; right:0px;text-align:center; margin-top:5px;" id="upload-message"></div>
+  <div style="left: 0px; right:0px;text-align:center; margin-top:5px;" id="upload-msg"></div>
   <p>
   <div id="progressbar"></div>
   </p>

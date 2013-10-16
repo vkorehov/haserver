@@ -4,6 +4,7 @@ import json
 import mimerender
 import device
 import devices
+import bus
 
 rest_render_xml = lambda **args: json.dumps(args)
 rest_render_json = lambda **args: json.dumps(args)
@@ -11,13 +12,15 @@ rest_render_html = lambda **args: json.dumps(args)
 rest_render_txt = lambda **args: json.dumps(args)
 
 urls = (
-	"/rest/device", "DeviceRestAPI",
-        "/rest/devices", "DevicesRestAPI",
-	"/devices.html", "Devices",
-	"/index.html", "Index",
-	"/", "Index"
-
+	"/rest/bus",     	"BusRestAPI",
+        "/rest/bus/history",    "BusHistoryRestAPI",
+	"/rest/device",  	"DeviceRestAPI",
+        "/rest/devices", 	"DevicesRestAPI",
+	"/devices.html", 	"Devices",
+	"/index.html",   	"Index",
+	"/",             	"Index"
 )
+
 app = web.application(urls, globals())
 mimerender = mimerender.WebPyMimeRender()
 render = web.template.render('templates/', cache=False)
@@ -65,8 +68,43 @@ class DevicesRestAPI:
                 txt  = rest_render_txt
         )
         def GET(self): # gets the status of device: currently in bootloader/running state
-                return {'devices' : devices.list()}
+		try:
+			return {'devices' : devices.list()}
+		except Exception,ex:
+			return {'devices' : []}
 
+# devices representation, this simply facade to bus.py api
+class BusHistoryRestAPI:
+        @mimerender(
+                default = 'html',
+                html = rest_render_html,
+                xml  = rest_render_xml,
+                json = rest_render_json,
+                txt  = rest_render_txt
+        )
+        def GET(self): # gets the status of device: currently in bootloader/running state
+		try:
+                	return {'history' : bus.history()}
+		except Exception,ex:
+			return {'history' : []}
+
+# devices representation, this simply facade to bus.py api
+class BusRestAPI:
+        @mimerender(
+                default = 'html',
+                html = rest_render_html,
+                xml  = rest_render_xml,
+                json = rest_render_json,
+                txt  = rest_render_txt
+        )
+        def GET(self): # gets the status of device: currently in bootloader/running state
+		statuses = {}
+		try:
+			for i in range(1,2):
+				statuses[i] = bus.status(i)
+                	return {'status' : statuses}
+		except Exception,ex:
+			return {'status' : {}}
 class Devices:
 	def GET(self): # entry point into application, it is using template to render index.
 		return render.devices(render.header(2),render.footer())
