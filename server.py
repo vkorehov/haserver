@@ -22,7 +22,7 @@ urls = (
 
 app = web.application(urls, globals())
 mimerender = mimerender.WebPyMimeRender()
-render = web.template.render('templates/', cache=True)
+render = web.template.render('templates/', cache=False)
 
 class RestError(web.HTTPError):
 	def __init__(self, err):

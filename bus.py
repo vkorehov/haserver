@@ -27,16 +27,27 @@ except Exception,ex:
 
 #pediodic timer to update periodically our main bus
 def _bus_checks():
-	try:
-		with db('ha.db') as c:
-			_bus_read(c,1)
-			_bus_read(c,2)
-			_bus_read(c,3)
-	except Exception, ex:
-		print "exception happened during periodic bus status check:"+str(ex)
-	threading.Timer(5, _bus_checks).start()
+	while True:
+		try:
+			with db('ha.db') as c:
+				bus1 = _bus_read(c,1)
+				if not bus1:
+					_bus_write(c,1,1)
+				bus2 = _bus_read(c,2)
+				if not bus2:
+					_bus_write(c,2,1)
+				bus3 = _bus_read(c,3)
+				if not bus3:
+					_bus_write(c,3,1)
+		except KeyboardInterrupt:
+			break
+		except Exception,ex:
+			print "exception happened during periodic bus status check:"+str(ex)
+		time.sleep(5)
 
-_bus_checks()
+th = threading.Thread(target=_bus_checks)
+th.daemon = True
+th.start()
 
 def update(bus, onoff):
 	with db('ha.db') as c:
@@ -49,4 +60,7 @@ def history(bus,interval,steps,after):
 		newafter = c.cursor().execute('SELECT MAX(last_updated) FROM bus_history WHERE bus_id=?',(bus,)).fetchall()[0];
 		if newafter == after:
 			return []
-		return {'history':history2plot(t, interval, steps, c.cursor().execute('SELECT last_updated,status FROM bus_history WHERE bus_id=? AND last_updated >= ? ORDER BY id DESC',(bus,t - interval)).fetchall()),'after': newafter}
+		data = c.cursor().execute('SELECT last_updated,status FROM bus_history WHERE bus_id=? AND last_updated >= ? ORDER BY id DESC',(bus,t - interval)).fetchall()
+		data.insert(0, [t,_bus_read(c,bus)])
+		h = history2plot(t, interval, steps, data)		
+		return {'history':h,'after': t}

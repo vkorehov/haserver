@@ -19,6 +19,7 @@ def db(name):
                 con.close()
 
 def history2plot(t,interval, steps, data):
+	print str(data)
 	j = 0
 	last = []
 	output = []

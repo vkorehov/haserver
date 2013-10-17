@@ -12,6 +12,7 @@ $def with (header,footer)
 <script src="static/jquery.form.min.js"></script>
 <script src="static/jquery-ui-1.10.3.custom.min.js"></script>
 <script src="static/jquery.data.tables.js"></script>
+<script src="static/jquery.jeditable.js"></script>
 <script src="static/jquery.sparkline.js"></script>
 <script>
 	$$.fn.preload = function() {
@@ -41,9 +42,25 @@ $def with (header,footer)
 		$$('#upload-msg').html('');
 		enableUpload();
 	}
+	function railsValue(idx) {
+		if (idx == 1)
+			return '5V';
+		if (idx == 2)
+			return '12V';
+		if (idx == 4)
+			return '220V';
+		if (idx == 1+2)
+			return '5V/12V';
+		if (idx == 1+4)
+			return '5V/220V';
+		if (idx == 1+2+4)
+			return '5V/12V/220V';
+		return idx;
+	}
+
 	var after = [0,0,0];
 	var interval = 1500;
-	var steps = 230;
+	var steps = 227;
 	$$(document).ready(function() {
 		$$([	'static/images/ajax-loader.gif',
 			'static/images/bl-active-icon.png',
@@ -57,26 +74,23 @@ $def with (header,footer)
 		});
 
 		var oTable = $$('#devices').dataTable( {
+			"bJQueryUI": true,
 			"bProcessing": true,
 			"sAjaxSource": 'rest/devices',
 			"sAjaxDataProp": 'devices',
 			"iDisplayLength": 100,
 			"aoColumnDefs": [
 				{
+					"sClass": "readonly",
+					"aTargets": [ 0,4]
+				},
+				{
+					"sClass": "readonly-rails",
+					"aTargets": [1]
+				},
+				{
 					"fnRender": function ( oObj ) {
-						if (oObj.aData[1] == 1)
-							return '5V';
-						if (oObj.aData[1] == 2)
-							return '12V';
-						if (oObj.aData[1] == 4)
-							return '220V';
-						if (oObj.aData[1] == 1+2)
-							return '5V/12V';
-						if (oObj.aData[1] == 1+4)
-							return '5V/220V';
-						if (oObj.aData[1] == 1+2+4)
-							return '5V/12V/220V';
-						return 'Unknow';
+						return railsValue(oObj.aData[1]);
 					},
 					"aTargets": [ 1 ]
 				},
@@ -95,6 +109,38 @@ $def with (header,footer)
 				}
 			],
 			"fnInitComplete": function(oSettings, json) {
+				/* Apply the jEditable handlers to the table */
+				$$('td', oTable.fnGetNodes()).not("[class*='readonly']").editable( 'rest/devices', {
+					"callback": function( sValue, y ) {
+						var aPos = oTable.fnGetPosition( this );
+						oTable.fnUpdate( sValue, aPos[0], aPos[1] );
+					},
+					"submitdata": function ( value, settings ) {
+						return {
+							"row_id": $$(this).parent().children(":first").text(),
+							"column": oTable.fnGetPosition( this )[2]
+						};
+					},
+					"height": "20px"
+				});
+				$$('.readonly-rails', oTable.fnGetNodes()).editable( 'rest/devices', {
+					type   : 'select',
+					data   : "{'1':'5V','2':'12V','4':'220V','3':'5V/12V','5':'5V/220V','7':'5V/12V/220V'}",
+					"callback": function( sValue, y ) {
+						var aPos = oTable.fnGetPosition( this );
+						oTable.fnUpdate( railsValue(sValue), aPos[0], aPos[1] );
+					},
+					"submitdata": function ( value, settings ) {
+						return {
+							"row_id": $$(this).parent().children(":first").text(),
+							"column": oTable.fnGetPosition( this )[2]
+						};
+					},
+					"height": "20px"
+				});
+
+
+
 				$$(".action").each(function() {
 					// Get device status
 					var action = $$(this)
@@ -176,17 +222,30 @@ $def with (header,footer)
 				});
     			}
 		});
+
 		var updateRails = function() {
+			var time = new Date();
+			var timevals = []
+			var decr = Math.round(interval/steps);
+			for(var i = steps; i >= 0; i--) {
+				timevals[i] = time;
+				time.setSeconds(time.getSeconds() - decr);
+			}
 			$$.ajax({
 				url: 'rest/bus?bus=1&interval='+interval+'&steps='+steps+'&after='+after[0],
 				success: function(response) {
 					var data = JSON.parse(response);
 					if(data.history && data.history.length) {
 						after[0] = data.after;
-						$$('.bus-history5V').sparkline(data.history, {});
+    						$$('.bus-history5V').sparkline(timevals, {height: '1.3em', type: 'bar', barSpacing: 0, barWidth: 3, barColor: 'white', tooltipPrefix: 'Time: '});
+    						$$('.bus-history5V').sparkline(data.history, {composite: true, height: '1.3em', fillColor:false, lineColor:'black', tooltipPrefix: 'Value: '});
 					} else if(after[0] == 0) {
 						$$('.bus-history5V').html('<span>no data</span>');
 					}
+					$$('.bus-history-toggle5V').button({
+					        icons: { primary: "ui-icon-arrowrefresh-1-e" },
+        					text: false
+    					});
 				},
 				error: function() {
                 			//try again
@@ -199,10 +258,15 @@ $def with (header,footer)
 					var data = JSON.parse(response);
 					if(data.history && data.history.length) {
 						after[1] = data.after;
-						$$('.bus-history12V').sparkline(data.history, {});
+    						$$('.bus-history12V').sparkline(timevals, {height: '1.3em', type: 'bar', barSpacing: 0, barWidth: 3, barColor: 'white', tooltipPrefix: 'Time: '});
+    						$$('.bus-history12V').sparkline(data.history, {composite: true, height: '1.3em', fillColor:false, lineColor:'black', tooltipPrefix: 'Value: '});
 					} else if(after[1] == 0){
 						$$('.bus-history12V').html('<span>no data</span>');
 					}
+					$$('.bus-history-toggle12V').button({
+					        icons: { primary: "ui-icon-arrowrefresh-1-e" },
+        					text: false
+    					});
 				},
 				error: function() {
              	   			//try again
@@ -215,10 +279,15 @@ $def with (header,footer)
 					var data = JSON.parse(response);
 					if(data.history && data.history.length) {
 						after[2] = data.after;
-						$$('.bus-history220V').sparkline(data.history, {});
+    						$$('.bus-history220V').sparkline(timevals, {height: '1.3em', type: 'bar', barSpacing: 0, barWidth: 3, barColor: 'white', tooltipPrefix: 'Time: '});
+    						$$('.bus-history220V').sparkline(data.history, {composite: true, height: '1.3em', fillColor:false, lineColor:'black', tooltipPrefix: 'Value: '});
 					} else if(after[2] == 0){
 						$$('.bus-history220V').html('<span>no data</span>');
 					}
+					$$('.bus-history-toggle220V').button({
+					        icons: { primary: "ui-icon-arrowrefresh-1-e" },
+        					text: false
+    					});
 				},
 				error: function() {
              		   		//try again
@@ -236,10 +305,11 @@ $:header
 <aside id="featured" class="body"><article>
 	<hgroup>
 		<h2>Rails</h2>
-		<div style="position:relative;"><span>5V</span><span style="position:absolute;left:40px;top:0px;" class="bus-history5V"><img height="16" width="16" src="static/images/ajax-loader16.gif" /></span></div>
-		<div style="position:relative;"><span>12V</span><span style="position:absolute;left:40px;top:0px;" class="bus-history12V"><img height="16" width="16" src="static/images/ajax-loader16.gif" /></span></div>
-		<div style="position:relative;"><span>220V</span><span style="position:absolute;left:40px;top:0px;" class="bus-history220V"><img height="16" width="16" src="static/images/ajax-loader16.gif" /></span></div>
+		<div style="position:relative;"><span>5V</span><span style="position:absolute;left:40px;top:0px;" class="bus-history5V"><img height="16" width="16" src="static/images/ajax-loader16.gif" /></span><span style="float:right;top:2px;" class="bus-history-toggle5V" /></div>
+		<div style="position:relative;"><span>12V</span><span style="position:absolute;left:40px;top:0px;" class="bus-history12V"><img height="16" width="16" src="static/images/ajax-loader16.gif" /></span><span style="float:right;top:2px;" class="bus-history-toggle12V" /></div>
+		<div style="position:relative;"><span>220V</span><span style="position:absolute;left:40px;top:0px;" class="bus-history220V"><img height="16" width="16" src="static/images/ajax-loader16.gif" /></span><span style="float:right;top:2px;" class="bus-history-toggle220V" /></div>
 	</hgroup>
+	<br />
 	<table cellpadding="0" cellspacing="0" border="0" class="display" id="devices">
 	<thead>
 		<tr>
