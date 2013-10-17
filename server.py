@@ -12,8 +12,7 @@ rest_render_html = lambda **args: json.dumps(args)
 rest_render_txt = lambda **args: json.dumps(args)
 
 urls = (
-	"/rest/bus",     	"BusRestAPI",
-        "/rest/bus/history",    "BusHistoryRestAPI",
+        "/rest/bus",      	"BusRestAPI",
 	"/rest/device",  	"DeviceRestAPI",
         "/rest/devices", 	"DevicesRestAPI",
 	"/devices.html", 	"Devices",
@@ -23,7 +22,7 @@ urls = (
 
 app = web.application(urls, globals())
 mimerender = mimerender.WebPyMimeRender()
-render = web.template.render('templates/', cache=False)
+render = web.template.render('templates/', cache=True)
 
 class RestError(web.HTTPError):
 	def __init__(self, err):
@@ -49,12 +48,13 @@ class DeviceRestAPI:
 			device.firmware_erase(int(data['addr']), 0x8200*2, log)
 			return {'status': device.firmware_upload(int(data['addr']), data['firmware'].file, 0x8200*2, log), 'log': log }
 		except IOError,err:
+			print str(err)
 			return RestError(str(err))
         def PUT(self):
 		data = web.input()
-                if data['launch_addr']:
+                if data.launch_addr:
                         return {'status': device.launch(int(data['launch_addr']))}
-                if data['discover_addr']:
+                if data.discover_addr:
                         return {'status': device.discover(int(data['discover_addr']))}
 
 
@@ -71,22 +71,8 @@ class DevicesRestAPI:
 		try:
 			return {'devices' : devices.list()}
 		except Exception,ex:
+			print str(ex)
 			return {'devices' : []}
-
-# devices representation, this simply facade to bus.py api
-class BusHistoryRestAPI:
-        @mimerender(
-                default = 'html',
-                html = rest_render_html,
-                xml  = rest_render_xml,
-                json = rest_render_json,
-                txt  = rest_render_txt
-        )
-        def GET(self): # gets the status of device: currently in bootloader/running state
-		try:
-                	return {'history' : bus.history()}
-		except Exception,ex:
-			return {'history' : []}
 
 # devices representation, this simply facade to bus.py api
 class BusRestAPI:
@@ -98,13 +84,13 @@ class BusRestAPI:
                 txt  = rest_render_txt
         )
         def GET(self): # gets the status of device: currently in bootloader/running state
-		statuses = {}
+		data = web.input()
 		try:
-			for i in range(1,2):
-				statuses[i] = bus.status(i)
-                	return {'status' : statuses}
+                	return bus.history(int(data['bus']), int(data['interval']), int(data['steps']), int(data['after']))
 		except Exception,ex:
-			return {'status' : {}}
+			print str(ex)
+			return {'history' : []}
+
 class Devices:
 	def GET(self): # entry point into application, it is using template to render index.
 		return render.devices(render.header(2),render.footer())

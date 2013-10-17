@@ -41,7 +41,9 @@ $def with (header,footer)
 		$$('#upload-msg').html('');
 		enableUpload();
 	}
-
+	var after = [0,0,0];
+	var interval = 1500;
+	var steps = 230;
 	$$(document).ready(function() {
 		$$([	'static/images/ajax-loader.gif',
 			'static/images/bl-active-icon.png',
@@ -53,60 +55,6 @@ $def with (header,footer)
 		$$('#firmware').change(function(){
 			clearUpload();
 		});
-
-		var rangeMap5V = $$.range_map({
-        		0: 'red',
-        		'1:5': 'yellow',
-        		5: 'green'
-    		});
-		var myvalues = [1,2,1,3,1,5,1,5,1,-1,-1,1,0,1,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,0,1,0,1];
-		$$.ajax({
-			url: 'rest/bus/history?bus=1',
-			success: function(response) {
-				var data = JSON.parse(response);
-				if(data.history && data.history.length) {
-					$$('.bus-history5V').sparkline(myvalues, { type:'tristate' });
-				} else {
-					$$('.bus-history5V').html('<span style="position:relative;top:-6px;">no data</span>');
-				}
-			},
-			error: function() {
-                		//try again
-                		$$.ajax(this);
-			}
-		});
-		$$.ajax({
-			url: 'rest/bus/history?bus=2',
-			success: function(response) {
-				var data = JSON.parse(response);
-				if(data.history && data.history.length) {
-					$$('.bus-history12V').sparkline(myvalues, { type:'tristate' });
-				} else {
-					$$('.bus-history12V').html('<span style="position:relative;top:-6px;">no data</span>');
-				}
-			},
-			error: function() {
-                		//try again
-                		$$.ajax(this);
-			}
-		});
-		$$.ajax({
-			url: 'rest/bus/history?bus=3',
-			success: function(response) {
-				var data = JSON.parse(response);
-				if(data.history && data.history.length) {
-					$$('.bus-history220V').sparkline(myvalues, { type:'tristate' });
-				} else {
-					$$('.bus-history220V').html('<span style="position:relative;top:-6px;">no data</span>');
-				}
-			},
-			error: function() {
-                		//try again
-                		$$.ajax(this);
-			}
-		});
-		
-
 
 		var oTable = $$('#devices').dataTable( {
 			"bProcessing": true,
@@ -227,7 +175,58 @@ $def with (header,footer)
 					});
 				});
     			}
-		} );
+		});
+		var updateRails = function() {
+			$$.ajax({
+				url: 'rest/bus?bus=1&interval='+interval+'&steps='+steps+'&after='+after[0],
+				success: function(response) {
+					var data = JSON.parse(response);
+					if(data.history && data.history.length) {
+						after[0] = data.after;
+						$$('.bus-history5V').sparkline(data.history, {});
+					} else if(after[0] == 0) {
+						$$('.bus-history5V').html('<span>no data</span>');
+					}
+				},
+				error: function() {
+                			//try again
+                			$$.ajax(this);
+				}
+			});
+			$$.ajax({
+				url: 'rest/bus?bus=2&interval='+interval+'&steps='+steps+'&after='+after[1],
+				success: function(response) {
+					var data = JSON.parse(response);
+					if(data.history && data.history.length) {
+						after[1] = data.after;
+						$$('.bus-history12V').sparkline(data.history, {});
+					} else if(after[1] == 0){
+						$$('.bus-history12V').html('<span>no data</span>');
+					}
+				},
+				error: function() {
+             	   			//try again
+                			$$.ajax(this);
+				}
+			});
+			$$.ajax({
+				url: 'rest/bus?bus=3&interval='+interval+'&steps='+steps+'&after='+after[2],
+				success: function(response) {
+					var data = JSON.parse(response);
+					if(data.history && data.history.length) {
+						after[2] = data.after;
+						$$('.bus-history220V').sparkline(data.history, {});
+					} else if(after[2] == 0){
+						$$('.bus-history220V').html('<span>no data</span>');
+					}
+				},
+				error: function() {
+             		   		//try again
+             		   		$$.ajax(this);
+				}
+			});
+		}		
+		setTimeout(updateRails, 1000);
 	} );
 </script>
 </head>
@@ -235,14 +234,11 @@ $def with (header,footer)
 $:header
 
 <aside id="featured" class="body"><article>
-	<figure>
-		<img src="static/images/raspberry-pi-logo.jpg" alt="HA Server" />
-	</figure>
 	<hgroup>
 		<h2>Rails</h2>
-		<div style="position:relative;"><span>5V</span><span style="position:absolute;left:40px;top:5px;" class="bus-history5V"><img style="position:relative;top:-5px;" height="16" width="16" src="static/images/ajax-loader16.gif" /></span></div>
-		<div style="position:relative;"><span>12V</span><span style="position:absolute;left:40px;top:5px;" class="bus-history12V"><img style="position:relative;top:-5px;" height="16" width="16" src="static/images/ajax-loader16.gif" /></span></div>
-		<div style="position:relative;"><span>220V</span><span style="position:absolute;left:40px;top:5px;" class="bus-history220V"><img style="position:relative;top:-5px;" height="16" width="16" src="static/images/ajax-loader16.gif" /></span></div>
+		<div style="position:relative;"><span>5V</span><span style="position:absolute;left:40px;top:0px;" class="bus-history5V"><img height="16" width="16" src="static/images/ajax-loader16.gif" /></span></div>
+		<div style="position:relative;"><span>12V</span><span style="position:absolute;left:40px;top:0px;" class="bus-history12V"><img height="16" width="16" src="static/images/ajax-loader16.gif" /></span></div>
+		<div style="position:relative;"><span>220V</span><span style="position:absolute;left:40px;top:0px;" class="bus-history220V"><img height="16" width="16" src="static/images/ajax-loader16.gif" /></span></div>
 	</hgroup>
 	<table cellpadding="0" cellspacing="0" border="0" class="display" id="devices">
 	<thead>
