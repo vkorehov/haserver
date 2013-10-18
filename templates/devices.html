@@ -75,7 +75,7 @@ $def with (header,footer)
 
 		var oTable = $$('#devices').dataTable( {
 			"bJQueryUI": true,
-			"bProcessing": true,
+			"bProcessing": false,
 			"sAjaxSource": 'rest/devices',
 			"sAjaxDataProp": 'devices',
 			"iDisplayLength": 100,
@@ -124,8 +124,8 @@ $def with (header,footer)
 					"height": "20px"
 				});
 				$$('.readonly-rails', oTable.fnGetNodes()).editable( 'rest/devices', {
-					type   : 'select',
-					data   : "{'1':'5V','2':'12V','4':'220V','3':'5V/12V','5':'5V/220V','7':'5V/12V/220V'}",
+					"type"   : 'select',
+					"data"   : "{'1':'5V','2':'12V','4':'220V','3':'5V/12V','5':'5V/220V','7':'5V/12V/220V'}",
 					"callback": function( sValue, y ) {
 						var aPos = oTable.fnGetPosition( this );
 						oTable.fnUpdate( railsValue(sValue), aPos[0], aPos[1] );
@@ -146,9 +146,8 @@ $def with (header,footer)
 					var action = $$(this)
 					$$.ajax({
 						url: 'rest/device?addr='+parseInt($$(this).text(), 16),
-						success: function(response) {
+						success: function(data) {
 							var addr = action.text();
-							var data = JSON.parse(response);
 							if(data.status) {
 								action.html('<a href="#"><img class="icon bootloader-active'+addr+'" height="32" width="32" src="static/images/bl-active-icon.png" /></a>');
 							} else {
@@ -222,6 +221,9 @@ $def with (header,footer)
 				});
     			}
 		});
+		var addButtons5V = true;
+		var addButtons12V = true;
+		var addButtons220V = true;
 
 		var updateRails = function() {
 			var time = new Date();
@@ -232,20 +234,40 @@ $def with (header,footer)
 				time.setSeconds(time.getSeconds() - decr);
 			}
 			$$.ajax({
+				method: 'GET',
 				url: 'rest/bus?bus=1&interval='+interval+'&steps='+steps+'&after='+after[0],
-				success: function(response) {
-					var data = JSON.parse(response);
+				success: function(data) {
 					if(data.history && data.history.length) {
 						after[0] = data.after;
     						$$('.bus-history5V').sparkline(timevals, {height: '1.3em', type: 'bar', barSpacing: 0, barWidth: 3, barColor: 'white', tooltipPrefix: 'Time: '});
-    						$$('.bus-history5V').sparkline(data.history, {composite: true, height: '1.3em', fillColor:false, lineColor:'black', tooltipPrefix: 'Value: '});
+    						$$('.bus-history5V').sparkline(data.history, {composite: true, chartRangeMin: 0, chartRangeMax: 1, height: '1.3em', fillColor:false, lineColor:'black', tooltipPrefix: 'Value: '});
 					} else if(after[0] == 0) {
 						$$('.bus-history5V').html('<span>no data</span>');
 					}
-					$$('.bus-history-toggle5V').button({
-					        icons: { primary: "ui-icon-arrowrefresh-1-e" },
-        					text: false
-    					});
+					if(addButtons5V) {
+						var toggleBtn = $$('.bus-history-toggle5V').button({
+						        icons: { primary: "ui-icon-arrowrefresh-1-e" },
+        						 text: false
+    						}).click(function (){
+							toggleBtn.button('disable');
+							toggleBtn.button('option', {text: false, 'icons':{ primary: 'spinner16' }} );
+							$$.ajax({
+								method: 'POST',
+								url: 'rest/bus',
+								data: 'toggle_bus=1',
+								success: function(response) {
+									toggleBtn.button('enable');
+									toggleBtn.button('option', {text: false, 'icons':{ primary: 'ui-icon-arrowrefresh-1-e' }} );
+								},
+								error: function(response) {
+									window.alert('Failed to toggle bus:'+response.statusText);
+									toggleBtn.button('enable');
+									toggleBtn.button('option', {text: false, 'icons':{ primary: 'ui-icon-arrowrefresh-1-e' }} );
+								}
+							});
+						});
+					}
+					addButtons5V = false
 				},
 				error: function() {
                 			//try again
@@ -253,20 +275,40 @@ $def with (header,footer)
 				}
 			});
 			$$.ajax({
+				method: 'GET',
 				url: 'rest/bus?bus=2&interval='+interval+'&steps='+steps+'&after='+after[1],
-				success: function(response) {
-					var data = JSON.parse(response);
+				success: function(data) {
 					if(data.history && data.history.length) {
 						after[1] = data.after;
     						$$('.bus-history12V').sparkline(timevals, {height: '1.3em', type: 'bar', barSpacing: 0, barWidth: 3, barColor: 'white', tooltipPrefix: 'Time: '});
-    						$$('.bus-history12V').sparkline(data.history, {composite: true, height: '1.3em', fillColor:false, lineColor:'black', tooltipPrefix: 'Value: '});
+    						$$('.bus-history12V').sparkline(data.history, {composite: true, chartRangeMin: 0, chartRangeMax: 1, height: '1.3em', fillColor:false, lineColor:'black', tooltipPrefix: 'Value: '});
 					} else if(after[1] == 0){
 						$$('.bus-history12V').html('<span>no data</span>');
 					}
-					$$('.bus-history-toggle12V').button({
-					        icons: { primary: "ui-icon-arrowrefresh-1-e" },
-        					text: false
-    					});
+					if(addButtons12V) {
+						var toggleBtn = $$('.bus-history-toggle12V').button({
+						        icons: { primary: "ui-icon-arrowrefresh-1-e" },
+    	  	  					 text: false
+    						}).click(function (){
+							toggleBtn.button('disable');
+							toggleBtn.button('option', {text: false, 'icons':{ primary: 'spinner16' }} );
+							$$.ajax({
+								method: 'POST',
+								url: 'rest/bus',
+								data: 'toggle_bus=2',
+								success: function(response) {
+									toggleBtn.button('enable');
+									toggleBtn.button('option', {text: false, 'icons':{ primary: 'ui-icon-arrowrefresh-1-e' }} );
+								},
+								error: function(response) {
+									window.alert('Failed to toggle bus:'+response.statusText);
+									toggleBtn.button('enable');
+									toggleBtn.button('option', {text: false, 'icons':{ primary: 'ui-icon-arrowrefresh-1-e' }} );
+								}
+							});
+						});
+					}
+					addButtons12V = false
 				},
 				error: function() {
              	   			//try again
@@ -274,27 +316,48 @@ $def with (header,footer)
 				}
 			});
 			$$.ajax({
+				method: 'GET',
 				url: 'rest/bus?bus=3&interval='+interval+'&steps='+steps+'&after='+after[2],
-				success: function(response) {
-					var data = JSON.parse(response);
+				success: function(data) {
 					if(data.history && data.history.length) {
 						after[2] = data.after;
     						$$('.bus-history220V').sparkline(timevals, {height: '1.3em', type: 'bar', barSpacing: 0, barWidth: 3, barColor: 'white', tooltipPrefix: 'Time: '});
-    						$$('.bus-history220V').sparkline(data.history, {composite: true, height: '1.3em', fillColor:false, lineColor:'black', tooltipPrefix: 'Value: '});
+    						$$('.bus-history220V').sparkline(data.history, {composite: true, chartRangeMin: 0, chartRangeMax: 1, height: '1.3em', fillColor:false, lineColor:'black', tooltipPrefix: 'Value: '});
 					} else if(after[2] == 0){
 						$$('.bus-history220V').html('<span>no data</span>');
 					}
-					$$('.bus-history-toggle220V').button({
-					        icons: { primary: "ui-icon-arrowrefresh-1-e" },
-        					text: false
-    					});
+					if(addButtons220V) {
+						var toggleBtn = $$('.bus-history-toggle220V').button({
+						        icons: { primary: "ui-icon-arrowrefresh-1-e" },
+      		  					 text: false
+    						}).click(function (){
+							toggleBtn.button('disable');
+							toggleBtn.button('option', {text: false, 'icons':{ primary: 'spinner16' }} );
+							$$.ajax({
+								method: 'POST',
+								url: 'rest/bus',
+								data: 'toggle_bus=3',
+								success: function(response) {
+									toggleBtn.button('enable');
+									toggleBtn.button('option', {text: false, 'icons':{ primary: 'ui-icon-arrowrefresh-1-e' }} );
+								},
+								error: function(response) {
+									window.alert('Failed to toggle bus:'+response.statusText);
+									toggleBtn.button('enable');
+									toggleBtn.button('option', {text: false, 'icons':{ primary: 'ui-icon-arrowrefresh-1-e' }} );
+								}
+							});
+						});
+					}
+					addButtons220V = true
 				},
 				error: function() {
              		   		//try again
              		   		$$.ajax(this);
 				}
 			});
-		}		
+			setTimeout(updateRails, 5000);
+		}
 		setTimeout(updateRails, 1000);
 	} );
 </script>
