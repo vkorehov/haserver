@@ -46,7 +46,7 @@ def history2plot(t,interval, steps, data):
 				if lastval is None:
 					rnd = random.randint(0, len(last))
 					lastval = last[0 if rnd >= len(last) else rnd]
-				elif lastval = 1:
+				elif lastval:
 					for v in last:
 						if v == 0:
 							lastval = 0

@@ -6,6 +6,7 @@ import device
 import devices
 import bus
 import re
+import logging
 
 rest_render_xml = lambda **args: json.dumps(args)
 rest_render_json = lambda **args: json.dumps(args)
@@ -46,6 +47,8 @@ class DeviceRestAPI:
 		except Exception,ex:
 			return {'status': []}
         def POST(self):
+		data = web.input(addr={})
+		fdata = web.input(firmware={})
 		try:
 			if 'launch_addr' in data:
 				return {'status': device.launch(int(data['launch_addr']))}
@@ -54,9 +57,12 @@ class DeviceRestAPI:
 			log = cStringIO.StringIO()
 			data = web.input()
 			device.firmware_erase(int(data['addr']), 0x8200*2, log)
-			return {'status': device.firmware_upload(int(data['addr']), data['firmware'].file, 0x8200*2, log), 'log': log }
+			print log
+			log = cStringIO.StringIO()
+			return {'status': device.firmware_upload(int(data['addr']), fdata['firmware'].file, 0x8200*2, log), 'log': log }
+			print log
 		except Exception,err:
-			print str(err)
+			logging.exception(err)
 			return RestError(str(err))
 
 # devices representation, this simply facade to devices.py api
@@ -72,7 +78,7 @@ class DevicesRestAPI:
 		try:
 			return {'devices' : devices.list()}
 		except Exception,ex:
-			print str(ex)
+			logging.exception(ex)
 			return {'devices' : []}
 	def POST(self):
 		data = web.input()
@@ -88,8 +94,8 @@ class DevicesRestAPI:
 			m = re.match('(0x)?([0-9a-fA-F]{1,2})', data.value)
 			if m is not None:
 				a = m.groups()[-1].upper()
-				devices.update(data.row_id, None, None, a)
-			return devices.address(data.row_id)
+				devices.update(data.row_id, None, None, int(a, 16))
+			return "%X" % devices.address(data.row_id)
 	def DELETE(self):
 		data = web.input()
 		devices.delete(data.id)
@@ -108,7 +114,7 @@ class BusRestAPI:
 		try:
                 	return bus.history(int(data['bus']), int(data['interval']), int(data['steps']), int(data['after']))
 		except Exception,ex:
-			print str(ex)
+			logging.exception(ex)
 			return {'history' : []}
 	def POST(self):
 		data = web.input()
@@ -118,7 +124,7 @@ class BusRestAPI:
 			else:
 				raise IOError('Unknown parameters')
 		except Exception,err:
-			print str(err)
+			logging.exception(err)
 			return RestError(str(err))
 class Devices:
 	def GET(self): # entry point into application, it is using template to render index.

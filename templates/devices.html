@@ -28,20 +28,34 @@ $def with (header,footer)
 		}
 	}
 	function disableUpload() {
-		$$('.ui-dialog-buttonset button', $$('#firmware-dialog').parent()).attr('disabled', 'true');
+		$$('.ui-dialog-buttonset button', $$('#firmware-dialog').parent()).button('disable');
 		$$('#firmware-form :input').attr("disabled", "true");
 	}
 	function enableUpload() {
 		$$('#firmware-form :input').removeAttr("disabled");
-		$$('.ui-dialog-buttonset button', $$('#firmware-dialog').parent()).removeAttr("disabled");
+		$$('.ui-dialog-buttonset button', $$('#firmware-dialog').parent()).button('enable');
 	}
 	function clearUpload() {
 		// Just clear errors without resetting form!
 		$$('#firmware-form label.error').hide();
 		$$('#firmware-form .error').removeClass('error');
-		$$('#upload-msg').html('');
+		$$('#upload-msg').html('');		
 		enableUpload();
 	}
+	function disableDiscover() {
+		$$('.ui-dialog-buttonset button', $$('#discover-dialog').parent()).button('disable');
+		$$('#discover-loading').show();
+	}
+	function enableDiscover() {
+		$$('.ui-dialog-buttonset button', $$('#discover-dialog').parent()).button('enable');
+		$$('#discover-loading').hide();
+	}
+	function clearDiscover() {
+		// Just clear errors without resetting form!
+		$$('#discover-msg').html('');
+		enableDiscover();
+	}
+
 	function railsValue(idx) {
 		if (idx == 1)
 			return '5V';
@@ -102,7 +116,7 @@ $def with (header,footer)
 				},
 				{
 					"fnRender": function ( oObj ) {
-						return '<span class=\'action\'><span style="display:none">'+oObj.aData[3]+'</span><img class="icon" height="32" width="32" src="static/images/ajax-loader.gif" /></span>';
+						return '<span class=\'action\'><img class="icon" height="32" width="32" src="static/images/ajax-loader.gif" /></span>';
 					},
 					"mData": null,
 					"aTargets": [ 4 ]
@@ -143,21 +157,21 @@ $def with (header,footer)
 
 				$$(".action").each(function() {
 					// Get device status
+					var trow = $$(this).parent().parent();
 					var action = $$(this)
 					$$.ajax({
-						url: 'rest/device?addr='+parseInt($$(this).text(), 16),
+						url: 'rest/device?addr='+parseInt($$('td:eq(3)', trow).text(), 16),
 						success: function(data) {
-							var addr = action.text();
 							if(data.status) {
-								action.html('<a href="#"><img class="icon bootloader-active'+addr+'" height="32" width="32" src="static/images/bl-active-icon.png" /></a>');
+								action.html('<a href="#"><img class="icon bootloader-active" height="32" width="32" src="static/images/bl-active-icon.png" /></a>');
 							} else {
-								action.html('<a href="#"><img class="icon bootloader-inactive'+addr+'" height="32" width="32" src="static/images/bl-inactive-icon.png" /></a>');
+								action.html('<a href="#"><img class="icon bootloader-inactive" height="32" width="32" src="static/images/bl-inactive-icon.png" /></a>');
 							}
-							$$('.bootloader-active'+addr).click(function() {
+							$$('.bootloader-active', trow).click(function() {
 								var uploadAjax;
 								$$('#firmware-form').validate().resetForm();
 								clearUpload();
-								$$('#firmware-form .upload-addr').val(parseInt(addr, 16));
+								$$('#firmware-form .upload-addr').val(parseInt($$('td:eq(3)', trow).text(), 16));
 								$$('#firmware').val('');
 								$$('#firmware-dialog').dialog({
 									width:'600px',
@@ -202,14 +216,44 @@ $def with (header,footer)
 										}
 									},
 									close: function() {
-										if (uploadAjax != undefined){
+										if (uploadAjax){
 											uploadAjax.abort();
 										}
 									}
 								});
 							});
-							$$('.bootloader-inactive'+addr).click(function() {
-								window.alert('Inactive');
+							$$('.bootloader-inactive', trow).click(function() {
+								var discoverAjax;
+								clearDiscover();
+								$$('#discover-dialog').dialog({
+									width:'600px',
+									modal: true,
+									buttons: {
+										'Enter Bootloader': function() {
+											var dialog = $$(this);
+											disableDiscover();
+											discoverAjax = $$.ajax({
+												method: 'POST',
+												url: 'rest/device',
+												data: 'discover_addr='+parseInt($$('td:eq(3)', trow).text(), 16),
+												success: function(response) {
+													enableDiscover();
+													dialog.dialog( "close" );
+													oTable._fnInitComplete();
+												},
+												error: function(response) {
+													enableDiscover();
+													$$('#discover-msg').html(response.statusText).addClass('error');
+												}
+											});
+										}
+									},
+									close: function() {
+										if (discoverAjax){
+											discoverAjax.abort();
+										}
+									}
+								});
 							});
 							action.show();
 						},
@@ -260,9 +304,9 @@ $def with (header,footer)
 									toggleBtn.button('option', {text: false, 'icons':{ primary: 'ui-icon-arrowrefresh-1-e' }} );
 								},
 								error: function(response) {
-									window.alert('Failed to toggle bus:'+response.statusText);
 									toggleBtn.button('enable');
 									toggleBtn.button('option', {text: false, 'icons':{ primary: 'ui-icon-arrowrefresh-1-e' }} );
+									window.alert('Failed to toggle bus:'+response.statusText);
 								}
 							});
 						});
@@ -301,9 +345,9 @@ $def with (header,footer)
 									toggleBtn.button('option', {text: false, 'icons':{ primary: 'ui-icon-arrowrefresh-1-e' }} );
 								},
 								error: function(response) {
-									window.alert('Failed to toggle bus:'+response.statusText);
 									toggleBtn.button('enable');
 									toggleBtn.button('option', {text: false, 'icons':{ primary: 'ui-icon-arrowrefresh-1-e' }} );
+									window.alert('Failed to toggle bus:'+response.statusText);
 								}
 							});
 						});
@@ -342,9 +386,9 @@ $def with (header,footer)
 									toggleBtn.button('option', {text: false, 'icons':{ primary: 'ui-icon-arrowrefresh-1-e' }} );
 								},
 								error: function(response) {
-									window.alert('Failed to toggle bus:'+response.statusText);
 									toggleBtn.button('enable');
 									toggleBtn.button('option', {text: false, 'icons':{ primary: 'ui-icon-arrowrefresh-1-e' }} );
+									window.alert('Failed to toggle bus:'+response.statusText);
 								}
 							});
 						});
@@ -399,6 +443,16 @@ $:footer
   <div style="left: 0px; right:0px;text-align:center; margin-top:5px;" id="upload-msg"></div>
   <p>
   <div id="progressbar"></div>
+  </p>
+</div>
+<div style="display:none" id="discover-dialog" title="Switch device to Bootloader mode?">
+  <p>
+    <span class="ui-icon ui-icon-circle-check" style="float: left; margin: 0 7px 50px 0;"></span>
+	Switching device to bootloader mode will require +5V rails to go off and on for 5 seconds, are you shure?
+  </p>
+  <div style="left: 0px; right:0px;text-align:center; margin-top:5px; display:none;" id="discover-loading"><img height="32" width="32" src="static/images/ajax-loader.gif" /></div>
+  <div style="left: 0px; right:0px;text-align:center; margin-top:5px;" id="discover-msg"></div>
+  <p>
   </p>
 </div>
 </body>

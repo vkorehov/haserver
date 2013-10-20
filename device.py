@@ -1,7 +1,9 @@
 import smbus
+import bus as habus
 import os
 import time
 from intelhex import IntelHex
+from utils import db
 
 bus = smbus.SMBus(1)
 # I2C address for device to programm
@@ -12,6 +14,7 @@ total_retries_count = 0
 
 def _flash_erase(i2c_addr, addr):
 	global total_retries_count
+	print "erasing:"+str(i2c_addr)+" address:"+str(addr)
 	retries_count = 0
 	while True:
 		if retries_count > 100:
@@ -160,20 +163,29 @@ def probe(i2c_addr):
 		return 0
 
 def discover(i2c_addr):
-	timeout = 500 # 500 seconds timeout for device discovery, you need to poweroff/poweron device during this timeframe
-        while True:
-                try:
+	with habus.bus_lock:
+		try:
+			with db('ha.db') as c:
+				habus._bus_write(c,1,0)
+			time.sleep(6)
+		finally:
+			with db('ha.db') as c:
+				habus._bus_write(c,1,1)
+
+		timeout = 5 # 5 seconds timeout for device discovery, you need to poweroff/poweron device during this timeframe
+		while True:
 			if timeout <= 0:
-				raise IOError('device was not discovered in 500 seconds')
-                        bus.write_word_data(i2c_addr, 0x01, 0x200)
-                        if bus.read_word_data(i2c_addr, 0x01) == 0x200:
-                                return i2c_addr
-                        time.sleep(1.0)
-			timeout -= 1
-                except IOError,err:
+				raise IOError('device was not discovered in 5 seconds')
+			try:
+				bus.write_word_data(i2c_addr, 0x01, 0x200)
+				if bus.read_word_data(i2c_addr, 0x01) == 0x200:
+					return i2c_addr
+			except IOError,err:
+				time.sleep(1.0)
+				timeout -= 1
+				continue
 			time.sleep(1.0)
 			timeout -= 1
-                        continue
 
 #firmware_erase(0x8200*2)
 #firmware_upload('capsens.X.production.hex', 0x8200*2)
