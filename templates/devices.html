@@ -75,54 +75,9 @@ $def with (header,footer)
 	var after = [0,0,0];
 	var interval = 1500;
 	var steps = 227;
-	$$(document).ready(function() {
-		$$([	'static/images/ajax-loader.gif',
-			'static/images/bl-active-icon.png',
-			'static/images/bl-inactive-icon.png']).preload();
-		$$('#progressbar').progressbar({
-      			value: 0
-    		});
-		$$('#firmware-form').validate();
-		$$('#firmware').change(function(){
-			clearUpload();
-		});
+	var oTable;
 
-		var oTable = $$('#devices').dataTable( {
-			"bJQueryUI": true,
-			"bProcessing": false,
-			"sAjaxSource": 'rest/devices',
-			"sAjaxDataProp": 'devices',
-			"iDisplayLength": 100,
-			"aoColumnDefs": [
-				{
-					"sClass": "readonly",
-					"aTargets": [ 0,4]
-				},
-				{
-					"sClass": "readonly-rails",
-					"aTargets": [1]
-				},
-				{
-					"fnRender": function ( oObj ) {
-						return railsValue(oObj.aData[1]);
-					},
-					"aTargets": [ 1 ]
-				},
-				{
-					"fnRender": function ( oObj ) {
-						return '0x'+oObj.aData[3].toString(16).toUpperCase();
-					},
-					"aTargets": [ 3 ]
-				},
-				{
-					"fnRender": function ( oObj ) {
-						return '<span class=\'action\'><img class="icon" height="32" width="32" src="static/images/ajax-loader.gif" /></span>';
-					},
-					"mData": null,
-					"aTargets": [ 4 ]
-				}
-			],
-			"fnInitComplete": function(oSettings, json) {
+	var updateTable = function() {
 				/* Apply the jEditable handlers to the table */
 				$$('td', oTable.fnGetNodes()).not("[class*='readonly']").editable( 'rest/devices', {
 					"callback": function( sValue, y ) {
@@ -199,6 +154,7 @@ $def with (header,footer)
       															value:1, max:1
     														});
 														dialog.dialog( "close" );
+														updateTable();
 													},
 													error: function( response ) {
 														$$('#progressbar').progressbar({
@@ -239,7 +195,7 @@ $def with (header,footer)
 												success: function(response) {
 													enableDiscover();
 													dialog.dialog( "close" );
-													oTable._fnInitComplete();
+													updateTable();
 												},
 												error: function(response) {
 													enableDiscover();
@@ -263,7 +219,58 @@ $def with (header,footer)
 						}
 					});
 				});
-    			}
+    			};
+
+	$$(document).ready(function() {
+		$$([	'static/images/ajax-loader.gif',
+			'static/images/bl-active-icon.png',
+			'static/images/bl-inactive-icon.png']).preload();
+		$$('#progressbar').progressbar({
+      			value: 0
+    		});
+		$$('#firmware-form').validate();
+		$$('#firmware').change(function(){
+			clearUpload();
+		});
+
+		oTable = $$('#devices').dataTable( {
+			"bJQueryUI": true,
+			"bProcessing": false,
+			"sAjaxSource": 'rest/devices',
+			"sAjaxDataProp": 'devices',
+			"iDisplayLength": 100,
+			"aoColumnDefs": [
+				{
+					"sClass": "readonly",
+					"aTargets": [ 0,4]
+				},
+				{
+					"sClass": "readonly-rails",
+					"aTargets": [1]
+				},
+				{
+					"fnRender": function ( oObj ) {
+						return railsValue(oObj.aData[1]);
+					},
+					"aTargets": [ 1 ]
+				},
+				{
+					"fnRender": function ( oObj ) {
+						return '0x'+oObj.aData[3].toString(16).toUpperCase();
+					},
+					"aTargets": [ 3 ]
+				},
+				{
+					"fnRender": function ( oObj ) {
+						return '<span class=\'action\'><img class="icon" height="32" width="32" src="static/images/ajax-loader.gif" /></span>';
+					},
+					"mData": null,
+					"aTargets": [ 4 ]
+				}
+			],
+			"fnInitComplete": function(oSettings, json) {
+				updateTable();
+			}
 		});
 		var addButtons5V = true;
 		var addButtons12V = true;
@@ -306,7 +313,7 @@ $def with (header,footer)
 								error: function(response) {
 									toggleBtn.button('enable');
 									toggleBtn.button('option', {text: false, 'icons':{ primary: 'ui-icon-arrowrefresh-1-e' }} );
-									window.alert('Failed to toggle bus:'+response.statusText);
+									window.alert(response.statusText);
 								}
 							});
 						});
@@ -347,7 +354,7 @@ $def with (header,footer)
 								error: function(response) {
 									toggleBtn.button('enable');
 									toggleBtn.button('option', {text: false, 'icons':{ primary: 'ui-icon-arrowrefresh-1-e' }} );
-									window.alert('Failed to toggle bus:'+response.statusText);
+									window.alert(response.statusText);
 								}
 							});
 						});
@@ -388,7 +395,7 @@ $def with (header,footer)
 								error: function(response) {
 									toggleBtn.button('enable');
 									toggleBtn.button('option', {text: false, 'icons':{ primary: 'ui-icon-arrowrefresh-1-e' }} );
-									window.alert('Failed to toggle bus:'+response.statusText);
+									window.alert(response.statusText);
 								}
 							});
 						});

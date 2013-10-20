@@ -57,10 +57,9 @@ class DeviceRestAPI:
 			log = cStringIO.StringIO()
 			data = web.input()
 			device.firmware_erase(int(data['addr']), 0x8200*2, log)
-			print log
-			log = cStringIO.StringIO()
-			return {'status': device.firmware_upload(int(data['addr']), fdata['firmware'].file, 0x8200*2, log), 'log': log }
-			print log
+			retrycnt = device.firmware_upload(int(data['addr']), fdata['firmware'].file, 0x8200*2, log)
+			device.launch(int(data['addr']))
+			return {'status': retrycnt, 'log': log }
 		except Exception,err:
 			logging.exception(err)
 			return RestError(str(err))
